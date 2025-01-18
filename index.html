@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاسبه الکترود و فیلر جوشکاری</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f0f2f5;
+            color: #333;
+            font-family: 'Vazirmatn', sans-serif;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+        .card {
+            margin-top: 20px;
+            border: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff;
+            border-radius: 8px;
+        }
+        .form-select {
+            margin-bottom: 15px;
+            font-family: 'Vazirmatn', sans-serif;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .form-select:focus {
+            border-color: #007bff;
+            box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-family: 'Vazirmatn', sans-serif;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .blink {
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            50% {
+                opacity: 0;
+            }
+        }
+        .result-item {
+            font-size: 18px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .warning {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center" style="color: #007bff;">محاسبه الکترود و فیلر جوشکاری</h1>
+        <div class="row mt-4">
+            <div class="col-md-4">
+                <label for="jType">نوع اتصال (J_type)</label>
+                <select class="form-select" id="jType" onchange="updateNSizeDropdown()">
+                    <option value="">انتخاب کنید</option>
+                    <option value="BW">BW</option>
+                    <option value="SW">SW</option>
+                    <option value="OLET">OLET</option>
+                    <option value="FW">FW</option>
+                    <option value="BR">BR</option>
+                    <option value="PAD">PAD</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="nSize">N-SIZE</label>
+                <select class="form-select" id="nSize" onchange="updateThkDropdown()" disabled>
+                    <option value="">ابتدا نوع اتصال را انتخاب کنید</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="thk">Thk</label>
+                <select class="form-select" id="thk" onchange="calculate()" disabled>
+                    <option value="">ابتدا N-SIZE را انتخاب کنید</option>
+                </select>
+            </div>
+        </div>
+        <div class="card mt-4" id="resultCard" style="display: none;">
+            <div class="card-body">
+                <h5 class="card-title" style="color: #007bff;">نتایج محاسبه</h5>
+                <p class="result-item" id="fillerSize"></p>
+                <p class="result-item" id="electrodeSize25"></p>
+                <p class="result-item" id="electrodeSize325"></p>
+                <p class="result-item" id="electrodeSize4"></p>
+                <p id="warning" class="warning blink"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const jTypeSelect = document.getElementById('jType');
+        const nSizeSelect = document.getElementById('nSize');
+        const thkSelect = document.getElementById('thk');
+        const resultCard = document.getElementById('resultCard');
+        const fillerSize = document.getElementById('fillerSize');
+        const electrodeSize25 = document.getElementById('electrodeSize25');
+        const electrodeSize325 = document.getElementById('electrodeSize325');
+        const electrodeSize4 = document.getElementById('electrodeSize4');
+        const warning = document.getElementById('warning');
+
+        let data = [];
+
+        // دریافت داده‌ها از آدرس بانک اطلاعاتی
+        async function fetchData() {
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/akarimvand/Weld_Weight/refs/heads/main/weight.txt');
+                const text = await response.text();
+                const rows = text.split('\n').slice(1); // حذف هدر
+                data = rows.map(row => {
+                    const columns = row.split(',');
+                    return {
+                        J_type: columns[0],
+                        N_SIZE: parseFloat(columns[1]),
+                        Thk: parseFloat(columns[2]),
+                        Filler_Size_2_4: parseFloat(columns[3]),
+                        Electrode_Size_2_5: parseFloat(columns[4]),
+                        Electrode_Size_3_25: parseFloat(columns[5]),
+                        Electrode_Size_4: parseFloat(columns[6])
+                    };
+                });
+            } catch (error) {
+                console.error('خطا در دریافت داده‌ها:', error);
+            }
+        }
+
+        // آپدیت dropdown N-SIZE بر اساس J_type انتخاب شده
+        function updateNSizeDropdown() {
+            const selectedJType = jTypeSelect.value;
+            nSizeSelect.innerHTML = '<option value="">انتخاب کنید</option>';
+            thkSelect.innerHTML = '<option value="">ابتدا N-SIZE را انتخاب کنید</option>';
+            thkSelect.disabled = true;
+
+            if (!selectedJType) {
+                nSizeSelect.disabled = true;
+                resultCard.style.display = "none";
+                return;
+            }
+
+            // تعیین نوع فیلتر بر اساس انتخاب J_type
+            let filterType = selectedJType;
+            if (selectedJType === "OLET") {
+                filterType = "BW"; // اگر OLET انتخاب شد، رکوردهای BW فیلتر شوند
+            } else if (["SW", "FW", "BR", "PAD"].includes(selectedJType)) {
+                filterType = "FW"; // اگر SW, FW, BR, یا PAD انتخاب شد، رکوردهای FW فیلتر شوند
+            }
+
+            const filteredNSizes = [...new Set(data
+                .filter(item => item.J_type === filterType)
+                .map(item => item.N_SIZE)
+            )];
+
+            if (filteredNSizes.length > 0) {
+                filteredNSizes.forEach(size => {
+                    const option = document.createElement('option');
+                    option.value = size;
+                    option.textContent = size;
+                    nSizeSelect.appendChild(option);
+                });
+                nSizeSelect.disabled = false;
+            } else {
+                nSizeSelect.disabled = true;
+            }
+        }
+
+        // آپدیت dropdown Thk بر اساس N-SIZE انتخاب شده
+        function updateThkDropdown() {
+            const selectedNSize = parseFloat(nSizeSelect.value);
+            thkSelect.innerHTML = '<option value="">انتخاب کنید</option>';
+
+            if (!selectedNSize) {
+                thkSelect.disabled = true;
+                resultCard.style.display = "none";
+                return;
+            }
+
+            // تعیین نوع فیلتر بر اساس انتخاب J_type
+            const selectedJType = jTypeSelect.value;
+            let filterType = selectedJType;
+            if (selectedJType === "OLET") {
+                filterType = "BW"; // اگر OLET انتخاب شد، رکوردهای BW فیلتر شوند
+            } else if (["SW", "FW", "BR", "PAD"].includes(selectedJType)) {
+                filterType = "FW"; // اگر SW, FW, BR, یا PAD انتخاب شد، رکوردهای FW فیلتر شوند
+            }
+
+            const filteredThks = [...new Set(data
+                .filter(item => item.N_SIZE === selectedNSize && item.J_type === filterType)
+                .map(item => item.Thk)
+            )];
+
+            if (filteredThks.length > 0) {
+                filteredThks.forEach(thk => {
+                    const option = document.createElement('option');
+                    option.value = thk;
+                    option.textContent = thk;
+                    thkSelect.appendChild(option);
+                });
+                thkSelect.disabled = false;
+            } else {
+                thkSelect.disabled = true;
+            }
+        }
+
+        // محاسبه نتایج
+        function calculate() {
+            const selectedJType = jTypeSelect.value;
+            const selectedNSize = parseFloat(nSizeSelect.value);
+            const selectedThk = parseFloat(thkSelect.value);
+
+            if (!selectedJType || !selectedNSize || !selectedThk) {
+                resultCard.style.display = "none";
+                return;
+            }
+
+            // تعیین نوع فیلتر بر اساس انتخاب J_type
+            let filterType = selectedJType;
+            if (selectedJType === "OLET") {
+                filterType = "BW"; // اگر OLET انتخاب شد، رکوردهای BW فیلتر شوند
+            } else if (["SW", "FW", "BR", "PAD"].includes(selectedJType)) {
+                filterType = "FW"; // اگر SW, FW, BR, یا PAD انتخاب شد، رکوردهای FW فیلتر شوند
+            }
+
+            let filteredData = data.filter(item => 
+                item.J_type === filterType && 
+                item.N_SIZE === selectedNSize
+            );
+
+            if (filteredData.length === 0) {
+                warning.textContent = "هیچ داده‌ای برای انتخاب‌های شما یافت نشد.";
+                warning.style.display = "block";
+                resultCard.style.display = "none";
+                return;
+            }
+
+            let closestThk = filteredData.reduce((prev, curr) => {
+                return (Math.abs(curr.Thk - selectedThk) < Math.abs(prev.Thk - selectedThk) ? curr : prev);
+            });
+
+            if (closestThk.Thk !== selectedThk) {
+                warning.textContent = "مقدار انتخاب شده Thk در بانک اطلاعاتی نیست و محاسبه انجام شده تقریبی میباشد.";
+                warning.style.display = "block";
+            } else {
+                warning.style.display = "none";
+            }
+
+            fillerSize.textContent = `Filler Size(2.4): ${closestThk.Filler_Size_2_4.toFixed(1)} kg`;
+            electrodeSize25.textContent = `Electrode Size(2.5): ${closestThk.Electrode_Size_2_5.toFixed(1)} kg`;
+            electrodeSize325.textContent = `Electrode Size(3.25): ${closestThk.Electrode_Size_3_25.toFixed(1)} kg`;
+            electrodeSize4.textContent = `Electrode Size(4): ${closestThk.Electrode_Size_4.toFixed(1)} kg`;
+
+            resultCard.style.display = "block";
+        }
+
+        // بارگذاری داده‌ها هنگام لود صفحه
+        fetchData();
+    </script>
+</body>
+</html>
