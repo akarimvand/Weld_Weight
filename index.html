@@ -55,13 +55,20 @@
                 opacity: 0;
             }
         }
-        .result-item {
-            font-size: 18px;
-            font-weight: bold;
-            color: #007bff;
+        .filler {
+            color: #007bff; /* آبی */
+        }
+        .electrode {
+            color: #dc3545; /* قرمز */
         }
         .warning {
             color: #dc3545;
+            font-weight: bold;
+        }
+        .table th {
+            color: #000; /* عناوین جدول مشکی */
+        }
+        .table td {
             font-weight: bold;
         }
     </style>
@@ -98,10 +105,32 @@
         <div class="card mt-4" id="resultCard" style="display: none;">
             <div class="card-body">
                 <h5 class="card-title" style="color: #007bff;">نتایج محاسبه</h5>
-                <p class="result-item" id="fillerSize"></p>
-                <p class="result-item" id="electrodeSize25"></p>
-                <p class="result-item" id="electrodeSize325"></p>
-                <p class="result-item" id="electrodeSize4"></p>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">عنوان</th>
+                            <th scope="col">مقدار</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Filler Size (2.4)</td>
+                            <td class="filler" id="fillerSize">-</td>
+                        </tr>
+                        <tr>
+                            <td>Electrode Size (2.5)</td>
+                            <td class="electrode" id="electrodeSize25">-</td>
+                        </tr>
+                        <tr>
+                            <td>Electrode Size (3.25)</td>
+                            <td class="electrode" id="electrodeSize325">-</td>
+                        </tr>
+                        <tr>
+                            <td>Electrode Size (4)</td>
+                            <td class="electrode" id="electrodeSize4">-</td>
+                        </tr>
+                    </tbody>
+                </table>
                 <p id="warning" class="warning blink"></p>
             </div>
         </div>
@@ -262,10 +291,11 @@
                 warning.style.display = "none";
             }
 
-            fillerSize.textContent = `Filler Size(2.4): ${closestThk.Filler_Size_2_4.toFixed(1)} kg`;
-            electrodeSize25.textContent = `Electrode Size(2.5): ${closestThk.Electrode_Size_2_5.toFixed(1)} kg`;
-            electrodeSize325.textContent = `Electrode Size(3.25): ${closestThk.Electrode_Size_3_25.toFixed(1)} kg`;
-            electrodeSize4.textContent = `Electrode Size(4): ${closestThk.Electrode_Size_4.toFixed(1)} kg`;
+            // نمایش نتایج فقط اگر مقدار بیشتر یا مساوی 0.1 باشد
+            fillerSize.textContent = closestThk.Filler_Size_2_4 >= 0.1 ? `${closestThk.Filler_Size_2_4.toFixed(1)} kg` : "-";
+            electrodeSize25.textContent = closestThk.Electrode_Size_2_5 >= 0.1 ? `${closestThk.Electrode_Size_2_5.toFixed(1)} kg` : "-";
+            electrodeSize325.textContent = closestThk.Electrode_Size_3_25 >= 0.1 ? `${closestThk.Electrode_Size_3_25.toFixed(1)} kg` : "-";
+            electrodeSize4.textContent = closestThk.Electrode_Size_4 >= 0.1 ? `${closestThk.Electrode_Size_4.toFixed(1)} kg` : "-";
 
             resultCard.style.display = "block";
         }
